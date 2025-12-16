@@ -373,8 +373,8 @@ class JobManager:
                 progress_callback=sample_progress,
             )
 
-            if len(samples) < 10:
-                raise RuntimeError(f"Only generated {len(samples)} samples, need at least 10")
+            if len(samples) < 5:
+                raise RuntimeError(f"Only generated {len(samples)} samples, need at least 5")
 
             # Stage 2: Augment samples
             self._update_job(

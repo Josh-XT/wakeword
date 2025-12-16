@@ -1,0 +1,10 @@
+{
+  "word": "jarvis",
+  "n_mfcc": 40,
+  "sample_rate": 16000,
+  "max_length_sec": 1.5,
+  "model_type": "cnn",
+  "hidden_size": 64,
+  "num_layers": 2,
+  "dropout": 0.3
+}

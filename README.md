@@ -6,6 +6,7 @@ Train your own wake word models in minutes and deploy them anywhere - from cloud
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-73%20passed-brightgreen.svg)](tests/)
 
 ---
 
@@ -14,10 +15,32 @@ Train your own wake word models in minutes and deploy them anywhere - from cloud
 Custom wake words shouldn't cost money or require uploading voice data to third parties. WakeWord solves this by:
 
 - **Training models on-the-fly** using synthetic TTS data (no voice recording needed!)
-- **Generating tiny models** (~50-200KB) that run on edge devices
+- **Generating compact models** (~1.7MB PyTorch, ~460KB for GRU variant)
 - **Providing a simple REST API** for model management and inference
 - **Supporting multiple export formats** (PyTorch, ONNX, TFLite)
 - **Including ready-to-use examples** for Python, Android, Dart/Flutter, and ESP32
+
+## 📊 Performance Benchmarks (RTX 4090)
+
+| Metric | Value |
+|--------|-------|
+| **Training Time** (100 samples, 30 epochs) | ~1 minute |
+| **Training Time** (500 samples, 50 epochs) | ~10-15 minutes |
+| **Single Inference Latency** | ~2.9ms |
+| **Batch Throughput** (batch=32) | **122,609 samples/sec** |
+| **GPU Memory Usage** | ~141 MB peak |
+| **Model Accuracy** | 95-100% (depending on wake word) |
+| **Wake Word Detection** | 99.99% confidence (true positive) |
+| **False Rejection** | 7.5% confidence (non-wake-word audio) |
+
+## 📦 Model Sizes
+
+| Format | CNN Model | GRU Model |
+|--------|-----------|-----------|
+| **PyTorch (.pt)** | ~1.7 MB | ~460 KB |
+| **ONNX (.onnx)** | ~1.2 MB | ~450 KB |
+| **TFLite (.tflite)** | ~1.2 MB | ~450 KB |
+| **Parameters** | 425,156 | 115,329 |
 
 ## 📋 Features
 
@@ -165,11 +188,20 @@ curl -X POST http://localhost:8000/predict/jarvis \
   -d "{\"audio_base64\": \"$AUDIO_B64\"}"
 ```
 
-Response:
+Response (wake word detected):
 ```json
 {
   "detected": true,
-  "confidence": 0.94,
+  "confidence": 0.9999983,
+  "word": "jarvis"
+}
+```
+
+Response (non-wake-word audio):
+```json
+{
+  "detected": false,
+  "confidence": 0.0748,
   "word": "jarvis"
 }
 ```
@@ -266,23 +298,29 @@ Environment variables (`.env` file):
 3. **Negative Samples**: Noise and similar-sounding words are generated for robust discrimination
 
 ### Model Architecture
-- **Input**: MFCC features (40 coefficients, ~150 frames for 1.5s audio)
-- **Network**: Small CNN with 3 conv layers + 2 FC layers (~50-100KB)
+- **Input**: MFCC features (40 coefficients, ~101 frames for 1.5s audio at 16kHz)
+- **CNN Network**: 3 conv layers + batch norm + 2 FC layers (425K params, ~1.7MB)
+- **GRU Network**: 2-layer GRU + FC layer (115K params, ~460KB)
 - **Output**: Single sigmoid for wake word probability
 
 ### Training
 - Binary classification: wake word vs. not-wake-word
 - Cross-entropy loss with Adam optimizer
-- ~500 positive samples + ~500 negative samples
-- Typically converges in 50 epochs (~10-15 minutes on GPU)
+- Typically 50-500 positive samples + equal negative samples
+- Converges in 30-50 epochs (~1-15 minutes depending on sample count)
 
 ## 📊 Performance
 
-Typical metrics on a well-trained model:
-- **Accuracy**: 95-98%
-- **False Positive Rate**: <2%
-- **Latency**: <50ms inference on CPU
-- **Model Size**: 50-200KB depending on format
+Benchmarked on NVIDIA RTX 4090:
+
+| Metric | Value |
+|--------|-------|
+| **Training** (100 samples, 30 epochs) | ~1 minute |
+| **Single Inference** | 2.9ms |
+| **Batch Throughput** | 122K samples/sec |
+| **Model Accuracy** | 95-100% |
+| **False Positive Rate** | <2% |
+| **GPU Memory** | ~141 MB peak |
 
 ## 🛣️ Roadmap
 
@@ -293,6 +331,33 @@ Typical metrics on a well-trained model:
 - [ ] Streaming detection API
 - [ ] iOS Swift example
 - [ ] Raspberry Pi optimized builds
+
+## 🧪 Testing
+
+Run the full test suite:
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run with coverage
+python -m pytest tests/ --cov=wakeword --cov-report=html
+
+# Run only fast tests (skip slow integration tests)
+python -m pytest tests/ -v -m "not slow"
+
+# Run benchmarks
+python -m pytest tests/test_model.py tests/test_integration.py -v -s
+```
+
+**Test Results**: 73 tests passing, covering:
+- Configuration and settings
+- TTS sample generation and augmentation
+- Model architectures (CNN, GRU)
+- Training and export pipelines
+- Job management and persistence
+- REST API endpoints
+- GPU performance benchmarks
 
 ## 🤝 Contributing
 

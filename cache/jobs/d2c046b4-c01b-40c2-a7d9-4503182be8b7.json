@@ -1,0 +1,28 @@
+{
+  "job_id": "d2c046b4-c01b-40c2-a7d9-4503182be8b7",
+  "word": "jarvis",
+  "status": "completed",
+  "created_at": "2025-12-16T13:46:08.611780",
+  "updated_at": "2025-12-16T13:47:16.406604",
+  "progress": 100,
+  "current_stage": "Complete",
+  "error_message": null,
+  "estimated_completion": "2025-12-16T14:01:08.611782",
+  "model_path": "models/jarvis",
+  "metrics": {
+    "train_loss": 0.000344009225955233,
+    "val_loss": 0.0002127655316144228,
+    "train_acc": 1.0,
+    "val_acc": 1.0,
+    "final_train_loss": 0.000344009225955233,
+    "final_val_loss": 0.0002127655316144228,
+    "final_train_acc": 1.0,
+    "final_val_acc": 1.0,
+    "positive_samples": 48,
+    "negative_samples": 24,
+    "exported_formats": [
+      "pytorch",
+      "config"
+    ]
+  }
+}
