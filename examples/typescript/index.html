@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WakeWord Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: #fff;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .card h2 {
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      color: #4fc3f7;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4fc3f7;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-right: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(79, 195, 247, 0.4);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef5350 0%, #e53935 100%);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(239, 83, 80, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #888;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.idle { background: #888; animation: none; }
+    .status-dot.initializing { background: #ffc107; }
+    .status-dot.listening { background: #4caf50; }
+    .status-dot.processing { background: #2196f3; }
+    .status-dot.error { background: #f44336; animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.1); }
+    }
+
+    .visualizer {
+      height: 60px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      margin: 1rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 0 1rem;
+    }
+
+    .visualizer-bar {
+      width: 4px;
+      height: 10px;
+      background: #4fc3f7;
+      border-radius: 2px;
+      transition: height 0.05s;
+    }
+
+    .detection-alert {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+      padding: 2rem 3rem;
+      border-radius: 16px;
+      font-size: 1.5rem;
+      font-weight: 600;
+      box-shadow: 0 8px 32px rgba(76, 175, 80, 0.4);
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+
+    .detection-alert.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .log {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.85rem;
+    }
+
+    .log-entry {
+      margin-bottom: 0.25rem;
+      color: #aaa;
+    }
+
+    .log-entry.info { color: #4fc3f7; }
+    .log-entry.success { color: #4caf50; }
+    .log-entry.error { color: #ef5350; }
+    .log-entry .timestamp { color: #666; }
+
+    .progress-bar {
+      height: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 1rem 0;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4fc3f7 0%, #29b6f6 100%);
+      transition: width 0.3s;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎤 WakeWord</h1>
+    <p class="subtitle">Browser-based wake word detection</p>
+
+    <!-- Configuration Card -->
+    <div class="card">
+      <h2>⚙️ Configuration</h2>
+      <div class="form-group">
+        <label for="serverUrl">Server URL</label>
+        <input type="text" id="serverUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+      </div>
+      <div class="form-group">
+        <label for="wakeWord">Wake Word</label>
+        <input type="text" id="wakeWord" value="jarvis" placeholder="jarvis">
+      </div>
+      <div class="form-group">
+        <label for="threshold">Detection Threshold</label>
+        <input type="range" id="threshold" min="0.1" max="0.99" step="0.05" value="0.5">
+        <span id="thresholdValue">0.50</span>
+      </div>
+      <button class="btn btn-secondary" onclick="checkServer()">Check Server</button>
+      <button class="btn btn-secondary" onclick="checkModel()">Check Model</button>
+    </div>
+
+    <!-- Training Card -->
+    <div class="card" id="trainingCard">
+      <h2>🔧 Train New Model</h2>
+      <p style="color: #aaa; margin-bottom: 1rem; font-size: 0.9rem;">
+        No model found? Train one directly from this page.
+      </p>
+      <div class="form-group">
+        <label for="sampleCount">Sample Count</label>
+        <select id="sampleCount">
+          <option value="100">100 (Fast, ~1 min)</option>
+          <option value="250">250 (Balanced, ~5 min)</option>
+          <option value="500" selected>500 (Recommended, ~15 min)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="startTraining()">Start Training</button>
+      <div id="trainingProgress" class="hidden">
+        <div class="progress-bar">
+          <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+        <p id="trainingStatus" style="color: #aaa; font-size: 0.9rem;"></p>
+      </div>
+    </div>
+
+    <!-- Detection Card -->
+    <div class="card">
+      <h2>🎧 Wake Word Detection</h2>
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Idle</span>
+      </div>
+      <div class="visualizer" id="visualizer">
+        <!-- Bars will be added dynamically -->
+      </div>
+      <button class="btn btn-primary" id="startBtn" onclick="startListening()">Start Listening</button>
+      <button class="btn btn-danger" id="stopBtn" onclick="stopListening()" disabled>Stop</button>
+    </div>
+
+    <!-- Log Card -->
+    <div class="card">
+      <h2>📋 Activity Log</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <!-- Detection Alert -->
+  <div class="detection-alert" id="detectionAlert">
+    🎉 Wake Word Detected!
+    <div id="detectionConfidence" style="font-size: 1rem; margin-top: 0.5rem;"></div>
+  </div>
+
+  <script type="module">
+    // Import the WakeWord client (adjust path as needed)
+    // In production, you'd bundle this or use a CDN
+    // import { WakeWordClient, WakeWordDetector, audioToBase64 } from './wakeword-client.js';
+
+    // For this demo, we'll inline the necessary functions
+    // ========================================================================
+
+    class WakeWordClient {
+      constructor(serverUrl = 'http://localhost:8000') {
+        this.serverUrl = serverUrl.replace(/\/$/, '');
+      }
+
+      async health() {
+        const response = await fetch(`${this.serverUrl}/health`);
+        if (!response.ok) throw new Error(`Health check failed: ${response.statusText}`);
+        return response.json();
+      }
+
+      async modelExists(word) {
+        try {
+          const response = await fetch(`${this.serverUrl}/models/${encodeURIComponent(word)}/config`);
+          return response.ok;
+        } catch {
+          return false;
+        }
+      }
+
+      async train(request) {
+        const response = await fetch(`${this.serverUrl}/train`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request),
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: response.statusText }));
+          throw new Error(error.detail || 'Training request failed');
+        }
+        return response.json();
+      }
+
+      async getJobStatus(jobId) {
+        const response = await fetch(`${this.serverUrl}/jobs/${encodeURIComponent(jobId)}`);
+        if (!response.ok) throw new Error(`Failed to get job status: ${response.statusText}`);
+        return response.json();
+      }
+
+      async predict(word, audioBase64) {
+        const response = await fetch(`${this.serverUrl}/predict/${encodeURIComponent(word)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audio_base64: audioBase64 }),
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: response.statusText }));
+          throw new Error(error.detail || 'Prediction failed');
+        }
+        return response.json();
+      }
+    }
+
+    function audioBufferToWav(audioBuffer) {
+      const numChannels = 1;
+      const sampleRate = audioBuffer.sampleRate;
+      const bitDepth = 16;
+
+      let audioData;
+      if (audioBuffer.numberOfChannels === 1) {
+        audioData = audioBuffer.getChannelData(0);
+      } else {
+        audioData = new Float32Array(audioBuffer.length);
+        for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+          const channelData = audioBuffer.getChannelData(i);
+          for (let j = 0; j < audioBuffer.length; j++) {
+            audioData[j] += channelData[j] / audioBuffer.numberOfChannels;
+          }
+        }
+      }
+
+      const bytesPerSample = bitDepth / 8;
+      const blockAlign = numChannels * bytesPerSample;
+      const dataSize = audioData.length * bytesPerSample;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      const writeString = (offset, str) => {
+        for (let i = 0; i < str.length; i++) {
+          view.setUint8(offset + i, str.charCodeAt(i));
+        }
+      };
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitDepth, true);
+      writeString(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      let offset = 44;
+      for (let i = 0; i < audioData.length; i++) {
+        const sample = Math.max(-1, Math.min(1, audioData[i]));
+        const value = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+        view.setInt16(offset, value, true);
+        offset += 2;
+      }
+
+      return new Uint8Array(buffer);
+    }
+
+    function audioToBase64(audioBuffer) {
+      const wavData = audioBufferToWav(audioBuffer);
+      let binary = '';
+      for (let i = 0; i < wavData.length; i++) {
+        binary += String.fromCharCode(wavData[i]);
+      }
+      return btoa(binary);
+    }
+
+    // ========================================================================
+    // Application State
+    // ========================================================================
+
+    let client = null;
+    let audioContext = null;
+    let mediaStream = null;
+    let processor = null;
+    let analyser = null;
+    let audioBuffer = [];
+    let isProcessing = false;
+    let detectionCooldown = false;
+    let status = 'idle';
+    let visualizerBars = [];
+
+    const SAMPLE_RATE = 16000;
+    const CHUNK_DURATION = 1.5;
+
+    // ========================================================================
+    // UI Functions
+    // ========================================================================
+
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const time = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="timestamp">[${time}]</span> ${message}`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(newStatus) {
+      status = newStatus;
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+
+      dot.className = `status-dot ${newStatus}`;
+      text.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+    }
+
+    function showDetection(confidence) {
+      const alert = document.getElementById('detectionAlert');
+      document.getElementById('detectionConfidence').textContent =
+        `Confidence: ${(confidence * 100).toFixed(1)}%`;
+      alert.classList.add('show');
+      setTimeout(() => alert.classList.remove('show'), 2000);
+    }
+
+    function initVisualizer() {
+      const visualizer = document.getElementById('visualizer');
+      visualizer.innerHTML = '';
+      visualizerBars = [];
+
+      for (let i = 0; i < 32; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'visualizer-bar';
+        visualizer.appendChild(bar);
+        visualizerBars.push(bar);
+      }
+    }
+
+    function updateVisualizer() {
+      if (!analyser || status !== 'listening') return;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+
+      const step = Math.floor(dataArray.length / visualizerBars.length);
+      for (let i = 0; i < visualizerBars.length; i++) {
+        const value = dataArray[i * step];
+        const height = Math.max(4, (value / 255) * 50);
+        visualizerBars[i].style.height = `${height}px`;
+      }
+
+      if (status === 'listening') {
+        requestAnimationFrame(updateVisualizer);
+      }
+    }
+
+    // ========================================================================
+    // API Functions
+    // ========================================================================
+
+    window.checkServer = async function() {
+      const serverUrl = document.getElementById('serverUrl').value;
+      client = new WakeWordClient(serverUrl);
+
+      try {
+        const result = await client.health();
+        log(`Server healthy: ${JSON.stringify(result)}`, 'success');
+      } catch (error) {
+        log(`Server error: ${error.message}`, 'error');
+      }
+    };
+
+    window.checkModel = async function() {
+      const serverUrl = document.getElementById('serverUrl').value;
+      const word = document.getElementById('wakeWord').value;
+      client = new WakeWordClient(serverUrl);
+
+      try {
+        const exists = await client.modelExists(word);
+        if (exists) {
+          log(`Model '${word}' found! Ready for detection.`, 'success');
+        } else {
+          log(`Model '${word}' not found. Train it first.`, 'error');
+        }
+      } catch (error) {
+        log(`Error checking model: ${error.message}`, 'error');
+      }
+    };
+
+    window.startTraining = async function() {
+      const serverUrl = document.getElementById('serverUrl').value;
+      const word = document.getElementById('wakeWord').value;
+      const sampleCount = parseInt(document.getElementById('sampleCount').value);
+      client = new WakeWordClient(serverUrl);
+
+      document.getElementById('trainingProgress').classList.remove('hidden');
+
+      try {
+        log(`Starting training for '${word}' with ${sampleCount} samples...`);
+        const result = await client.train({
+          word,
+          sample_count: sampleCount,
+          epochs: 30,
+        });
+
+        log(`Training started: Job ID ${result.job_id}`);
+
+        // Poll for status
+        const pollStatus = async () => {
+          try {
+            const status = await client.getJobStatus(result.job_id);
+            const progress = status.progress || 0;
+
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            document.getElementById('trainingStatus').textContent =
+              `${status.current_stage} (${progress.toFixed(1)}%)`;
+
+            if (status.status === 'completed') {
+              log(`Training completed! Model ready for '${word}'`, 'success');
+              document.getElementById('trainingProgress').classList.add('hidden');
+            } else if (status.status === 'failed') {
+              log(`Training failed: ${status.error_message}`, 'error');
+              document.getElementById('trainingProgress').classList.add('hidden');
+            } else {
+              setTimeout(pollStatus, 3000);
+            }
+          } catch (error) {
+            log(`Error polling status: ${error.message}`, 'error');
+          }
+        };
+
+        pollStatus();
+      } catch (error) {
+        log(`Training error: ${error.message}`, 'error');
+        document.getElementById('trainingProgress').classList.add('hidden');
+      }
+    };
+
+    window.startListening = async function() {
+      const serverUrl = document.getElementById('serverUrl').value;
+      const word = document.getElementById('wakeWord').value;
+      const threshold = parseFloat(document.getElementById('threshold').value);
+      client = new WakeWordClient(serverUrl);
+
+      setStatus('initializing');
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('stopBtn').disabled = false;
+
+      try {
+        // Check model exists
+        const exists = await client.modelExists(word);
+        if (!exists) {
+          throw new Error(`Model '${word}' not found. Train it first.`);
+        }
+
+        // Request microphone
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: { ideal: SAMPLE_RATE },
+            channelCount: { exact: 1 },
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        });
+
+        audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
+        const source = audioContext.createMediaStreamSource(mediaStream);
+
+        processor = audioContext.createScriptProcessor(4096, 1, 1);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+
+        source.connect(analyser);
+        analyser.connect(processor);
+        processor.connect(audioContext.destination);
+
+        processor.onaudioprocess = (event) => {
+          if (status !== 'listening') return;
+
+          const inputData = event.inputBuffer.getChannelData(0);
+          audioBuffer.push(new Float32Array(inputData));
+
+          const totalSamples = audioBuffer.reduce((sum, buf) => sum + buf.length, 0);
+          const requiredSamples = SAMPLE_RATE * CHUNK_DURATION;
+
+          if (totalSamples >= requiredSamples && !isProcessing && !detectionCooldown) {
+            processAudio(word, threshold);
+          }
+        };
+
+        setStatus('listening');
+        log(`Listening for '${word}'...`, 'success');
+        initVisualizer();
+        updateVisualizer();
+
+      } catch (error) {
+        setStatus('error');
+        log(`Error: ${error.message}`, 'error');
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+      }
+    };
+
+    async function processAudio(word, threshold) {
+      if (isProcessing || audioBuffer.length === 0) return;
+
+      isProcessing = true;
+
+      try {
+        const totalLength = audioBuffer.reduce((sum, buf) => sum + buf.length, 0);
+        const combinedAudio = new Float32Array(totalLength);
+        let offset = 0;
+        for (const chunk of audioBuffer) {
+          combinedAudio.set(chunk, offset);
+          offset += chunk.length;
+        }
+
+        const requiredSamples = Math.floor(SAMPLE_RATE * CHUNK_DURATION);
+        const audioSlice = combinedAudio.slice(0, requiredSamples);
+
+        // Keep overlap
+        const overlapSamples = Math.floor(requiredSamples * 0.5);
+        if (combinedAudio.length > overlapSamples) {
+          audioBuffer = [combinedAudio.slice(-overlapSamples)];
+        } else {
+          audioBuffer = [];
+        }
+
+        // Create AudioBuffer
+        const buffer = audioContext.createBuffer(1, audioSlice.length, SAMPLE_RATE);
+        buffer.getChannelData(0).set(audioSlice);
+
+        const audioBase64 = audioToBase64(buffer);
+        const result = await client.predict(word, audioBase64);
+
+        if (result.detected && result.confidence >= threshold) {
+          log(`🎉 Detected '${word}' with ${(result.confidence * 100).toFixed(1)}% confidence!`, 'success');
+          showDetection(result.confidence);
+
+          detectionCooldown = true;
+          setTimeout(() => { detectionCooldown = false; }, 2000);
+        }
+
+      } catch (error) {
+        // Don't spam errors during detection
+        console.error('Prediction error:', error);
+      } finally {
+        isProcessing = false;
+      }
+    }
+
+    window.stopListening = function() {
+      if (processor) {
+        processor.disconnect();
+        processor = null;
+      }
+      if (analyser) {
+        analyser.disconnect();
+        analyser = null;
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+
+      audioBuffer = [];
+      setStatus('idle');
+      log('Stopped listening');
+
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+
+      // Reset visualizer
+      visualizerBars.forEach(bar => bar.style.height = '10px');
+    };
+
+    // ========================================================================
+    // Init
+    // ========================================================================
+
+    document.getElementById('threshold').addEventListener('input', (e) => {
+      document.getElementById('thresholdValue').textContent = parseFloat(e.target.value).toFixed(2);
+    });
+
+    initVisualizer();
+    log('WakeWord demo initialized. Configure and start listening!');
+  </script>
+</body>
+</html>

@@ -18,7 +18,7 @@ Custom wake words shouldn't cost money or require uploading voice data to third 
 - **Generating compact models** (~1.7MB PyTorch, ~460KB for GRU variant)
 - **Providing a simple REST API** for model management and inference
 - **Supporting multiple export formats** (PyTorch, ONNX, TFLite)
-- **Including ready-to-use examples** for Python, Android, Dart/Flutter, and ESP32
+- **Including ready-to-use examples** for Python, Android, Dart/Flutter, Web/TypeScript, and ESP32
 
 ## 📊 Performance Benchmarks (RTX 4090)
 
@@ -52,7 +52,7 @@ Custom wake words shouldn't cost money or require uploading voice data to third 
 | 📦 **Multiple Export Formats** | PyTorch (.pt), ONNX (.onnx), TensorFlow Lite (.tflite) |
 | 🔌 **REST API** | Simple HTTP API for training, status checks, and inference |
 | 🐳 **Docker Ready** | CPU and CUDA Docker images included |
-| 📱 **Cross-Platform** | Examples for Python, Android, iOS/Flutter, and ESP32 |
+| 📱 **Cross-Platform** | Examples for Python, Android, iOS/Flutter, Web/TypeScript, and ESP32 |
 
 ## 🏗️ Architecture
 
@@ -273,6 +273,29 @@ await detector.startListening(
   onWakeWord: () => print('Wake word detected!'),
 );
 ```
+
+## 🌐 TypeScript/JavaScript (Browser)
+
+```typescript
+import { WakeWordDetector } from '@wakeword/client';
+
+const detector = new WakeWordDetector({
+  word: 'jarvis',
+  serverUrl: 'http://localhost:8000',
+  threshold: 0.5,
+  onWakeWord: (confidence) => {
+    console.log(`Detected! Confidence: ${(confidence * 100).toFixed(1)}%`);
+  },
+});
+
+// Start listening (requests microphone permission)
+await detector.start();
+
+// Stop when done
+detector.stop();
+```
+
+See [examples/typescript](examples/typescript) for a complete demo with audio visualization.
 
 ## ⚙️ Configuration
 
