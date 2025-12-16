@@ -79,8 +79,7 @@ class TrainingJobStatus {
 
   bool get isComplete => status == 'completed';
   bool get isFailed => status == 'failed';
-  bool get isInProgress =>
-      !isComplete && !isFailed && status != 'cancelled';
+  bool get isInProgress => !isComplete && !isFailed && status != 'cancelled';
 }
 
 /// Information about an available model
@@ -154,16 +153,15 @@ class WakeWordClient {
   /// List all available models
   Future<List<ModelInfo>> listModels() async {
     final response = await _client.get(Uri.parse('$serverUrl/models'));
-    
+
     if (response.statusCode != 200) {
       throw Exception('Failed to list models: ${response.body}');
     }
 
     final data = jsonDecode(response.body);
-    final models = (data['models'] as List)
-        .map((m) => ModelInfo.fromJson(m))
-        .toList();
-    
+    final models =
+        (data['models'] as List).map((m) => ModelInfo.fromJson(m)).toList();
+
     return models;
   }
 
@@ -226,7 +224,7 @@ class WakeWordClient {
 
     while (DateTime.now().isBefore(deadline)) {
       final status = await getJobStatus(jobId);
-      
+
       if (onProgress != null) {
         onProgress(status);
       }
@@ -246,10 +244,7 @@ class WakeWordClient {
   }
 
   /// Download a model file
-  Future<Uint8List> downloadModel(
-    String word, {
-    String format = 'onnx',
-  }) async {
+  Future<Uint8List> downloadModel(String word, {String format = 'onnx'}) async {
     final response = await _client.get(
       Uri.parse('$serverUrl/models/$word?format=$format'),
     );
@@ -268,11 +263,11 @@ class WakeWordClient {
     String? directory,
   }) async {
     final bytes = await downloadModel(word, format: format);
-    
+
     final dir = directory ?? (await getApplicationDocumentsDirectory()).path;
     final file = File('$dir/${word}_model.$format');
     await file.writeAsBytes(bytes);
-    
+
     return file;
   }
 
@@ -297,16 +292,13 @@ class WakeWordClient {
       return;
     }
 
-    await waitForTraining(
-      job.jobId,
-      onProgress: onProgress,
-    );
+    await waitForTraining(job.jobId, onProgress: onProgress);
   }
 
   /// Predict if audio contains the wake word (server-side)
   Future<PredictionResult> predict(String word, Uint8List audioBytes) async {
     final audioBase64 = base64Encode(audioBytes);
-    
+
     final response = await _client.post(
       Uri.parse('$serverUrl/predict/$word'),
       headers: {'Content-Type': 'application/json'},
@@ -332,13 +324,11 @@ class WakeWordClient {
 abstract class WakeWordDetector {
   final WakeWordConfig config;
   final WakeWordClient client;
-  
+
   bool _isListening = false;
 
-  WakeWordDetector({
-    required this.config,
-    WakeWordClient? client,
-  }) : client = client ?? WakeWordClient(serverUrl: config.serverUrl);
+  WakeWordDetector({required this.config, WakeWordClient? client})
+    : client = client ?? WakeWordClient(serverUrl: config.serverUrl);
 
   bool get isListening => _isListening;
 
@@ -380,7 +370,9 @@ class ServerWakeWordDetector extends WakeWordDetector {
     await client.ensureModel(
       config.word,
       onProgress: (status) {
-        print('Training progress: ${status.progress}% - ${status.currentStage}');
+        print(
+          'Training progress: ${status.progress}% - ${status.currentStage}',
+        );
       },
     );
   }
@@ -425,7 +417,9 @@ class ServerWakeWordDetector extends WakeWordDetector {
     // });
 
     print('Listening for wake word "${config.word}"...');
-    print('Note: Audio recording not implemented - use flutter_sound or record package');
+    print(
+      'Note: Audio recording not implemented - use flutter_sound or record package',
+    );
   }
 
   @override
@@ -452,16 +446,13 @@ class LocalWakeWordDetector extends WakeWordDetector {
   @override
   Future<void> initialize() async {
     // Download model if needed
-    _modelFile = await client.downloadModelToFile(
-      config.word,
-      format: 'onnx',
-    );
+    _modelFile = await client.downloadModelToFile(config.word, format: 'onnx');
 
     // Initialize ONNX Runtime
     // Uncomment when using onnxruntime_flutter:
     // await OrtEnv.instance.init();
     // _session = OrtSession.fromFile(_modelFile!.path);
-    
+
     print('Local model loaded from: ${_modelFile!.path}');
   }
 
@@ -486,7 +477,7 @@ class LocalWakeWordDetector extends WakeWordDetector {
     //   try {
     //     final audioData = await getAudioChunk();
     //     final mfcc = extractMFCC(audioData);
-    //     
+    //
     //     final inputs = {'input': OrtValueTensor.fromList(mfcc, [1, 40, 150])};
     //     final outputs = await _session!.run(inputs);
     //     final confidence = outputs['output']!.value[0];
@@ -506,7 +497,9 @@ class LocalWakeWordDetector extends WakeWordDetector {
     // });
 
     print('Listening for wake word "${config.word}" (local mode)...');
-    print('Note: ONNX inference not implemented - use onnxruntime_flutter package');
+    print(
+      'Note: ONNX inference not implemented - use onnxruntime_flutter package',
+    );
   }
 
   @override

@@ -3,6 +3,7 @@ WakeWord Server - FastAPI Application
 
 REST API for training and serving wake word detection models.
 """
+
 import asyncio
 import logging
 from pathlib import Path
@@ -44,13 +45,13 @@ job_manager: Optional[JobManager] = None
 async def startup():
     """Initialize services on startup."""
     global job_manager
-    
+
     job_manager = JobManager(
         jobs_dir=settings.cache_dir / "jobs",
         models_dir=settings.models_dir,
         samples_dir=settings.samples_dir,
     )
-    
+
     logger.info("WakeWord server started")
     logger.info(f"Models directory: {settings.models_dir}")
     logger.info(f"Samples directory: {settings.samples_dir}")
@@ -60,16 +61,21 @@ async def startup():
 # Request/Response Models
 # ============================================================================
 
+
 class TrainRequest(BaseModel):
     """Request to train a new wake word model."""
+
     word: str = Field(..., description="The wake word to train", min_length=1, max_length=50)
-    sample_count: int = Field(default=500, ge=50, le=2000, description="Number of base samples to generate")
+    sample_count: int = Field(
+        default=500, ge=50, le=2000, description="Number of base samples to generate"
+    )
     epochs: int = Field(default=50, ge=10, le=200, description="Training epochs")
     batch_size: int = Field(default=32, ge=8, le=128, description="Training batch size")
 
 
 class TrainResponse(BaseModel):
     """Response after requesting training."""
+
     job_id: str
     word: str
     status: str
@@ -80,6 +86,7 @@ class TrainResponse(BaseModel):
 
 class JobStatusResponse(BaseModel):
     """Response with job status details."""
+
     job_id: str
     word: str
     status: str
@@ -95,6 +102,7 @@ class JobStatusResponse(BaseModel):
 
 class ModelInfo(BaseModel):
     """Information about an available model."""
+
     word: str
     directory: str
     config: dict
@@ -104,17 +112,20 @@ class ModelInfo(BaseModel):
 
 class ModelListResponse(BaseModel):
     """Response listing available models."""
+
     models: List[ModelInfo]
     total: int
 
 
 class PredictRequest(BaseModel):
     """Request to predict if audio contains wake word."""
+
     audio_base64: str = Field(..., description="Base64-encoded audio data (WAV format)")
 
 
 class PredictResponse(BaseModel):
     """Response from prediction."""
+
     detected: bool
     confidence: float
     word: str
@@ -123,6 +134,7 @@ class PredictResponse(BaseModel):
 # ============================================================================
 # API Endpoints
 # ============================================================================
+
 
 @app.get("/")
 async def root():
@@ -144,6 +156,7 @@ async def health():
 # Model Management
 # ----------------------------------------------------------------------------
 
+
 @app.get("/models", response_model=ModelListResponse)
 async def list_models():
     """List all available trained models."""
@@ -158,16 +171,16 @@ async def list_models():
 async def get_model(word: str, format: str = Query("pytorch", regex="^(pytorch|onnx|tflite)$")):
     """
     Get a trained model for a word.
-    
+
     If the model doesn't exist and no training is in progress, returns 404.
     If training is in progress, returns 202 with job status.
     If model exists, returns the model file.
     """
     word_lower = word.lower().replace(" ", "_")
-    
+
     # Check if model exists
     model_dir = job_manager.get_model_for_word(word)
-    
+
     if model_dir:
         # Model exists - return the file
         format_to_ext = {
@@ -177,19 +190,18 @@ async def get_model(word: str, format: str = Query("pytorch", regex="^(pytorch|o
         }
         ext = format_to_ext.get(format, "pt")
         model_file = model_dir / f"model.{ext}"
-        
+
         if not model_file.exists():
             raise HTTPException(
-                status_code=404,
-                detail=f"Model format '{format}' not available for word '{word}'"
+                status_code=404, detail=f"Model format '{format}' not available for word '{word}'"
             )
-        
+
         return FileResponse(
             path=model_file,
             filename=f"{word_lower}_model.{ext}",
             media_type="application/octet-stream",
         )
-    
+
     # Check if training is in progress
     job = job_manager.get_job_for_word(word)
     if job and job.status not in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
@@ -202,13 +214,12 @@ async def get_model(word: str, format: str = Query("pytorch", regex="^(pytorch|o
                 "current_stage": job.current_stage,
                 "message": f"Model for '{word}' is being trained. Check back soon.",
                 "check_status_url": f"/jobs/{job.job_id}",
-            }
+            },
         )
-    
+
     # Model doesn't exist
     raise HTTPException(
-        status_code=404,
-        detail=f"No model found for word '{word}'. Use POST /train to create one."
+        status_code=404, detail=f"No model found for word '{word}'. Use POST /train to create one."
     )
 
 
@@ -216,24 +227,19 @@ async def get_model(word: str, format: str = Query("pytorch", regex="^(pytorch|o
 async def get_model_config(word: str):
     """Get the configuration for a trained model."""
     model_dir = job_manager.get_model_for_word(word)
-    
+
     if not model_dir:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No model found for word '{word}'"
-        )
-    
+        raise HTTPException(status_code=404, detail=f"No model found for word '{word}'")
+
     config_path = model_dir / "config.json"
     if not config_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Model config not found"
-        )
-    
+        raise HTTPException(status_code=404, detail="Model config not found")
+
     import json
-    with open(config_path, 'r') as f:
+
+    with open(config_path, "r") as f:
         config = json.load(f)
-    
+
     return config
 
 
@@ -241,16 +247,14 @@ async def get_model_config(word: str):
 async def delete_model(word: str):
     """Delete a trained model."""
     model_dir = job_manager.get_model_for_word(word)
-    
+
     if not model_dir:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No model found for word '{word}'"
-        )
-    
+        raise HTTPException(status_code=404, detail=f"No model found for word '{word}'")
+
     import shutil
+
     shutil.rmtree(model_dir)
-    
+
     return {"message": f"Model for '{word}' deleted successfully"}
 
 
@@ -258,17 +262,18 @@ async def delete_model(word: str):
 # Training Jobs
 # ----------------------------------------------------------------------------
 
+
 @app.post("/train", response_model=TrainResponse)
 async def train_model(request: TrainRequest):
     """
     Request training of a new wake word model.
-    
+
     If a model already exists for the word, returns info about it.
     If training is already in progress, returns the job status.
     Otherwise, starts a new training job.
     """
     word = request.word.strip()
-    
+
     # Check if model already exists
     model_dir = job_manager.get_model_for_word(word)
     if model_dir:
@@ -279,11 +284,13 @@ async def train_model(request: TrainRequest):
             message=f"Model for '{word}' already exists. Use GET /models/{word} to download.",
             check_status_url=f"/models/{word}",
         )
-    
+
     # Check if training is already in progress
     existing_job = job_manager.get_job_for_word(word)
     if existing_job and existing_job.status not in [
-        JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED
+        JobStatus.COMPLETED,
+        JobStatus.FAILED,
+        JobStatus.CANCELLED,
     ]:
         return TrainResponse(
             job_id=existing_job.job_id,
@@ -293,7 +300,7 @@ async def train_model(request: TrainRequest):
             estimated_minutes=15,
             check_status_url=f"/jobs/{existing_job.job_id}",
         )
-    
+
     # Start new training job
     try:
         job = await job_manager.create_job(
@@ -302,7 +309,7 @@ async def train_model(request: TrainRequest):
             epochs=request.epochs,
             batch_size=request.batch_size,
         )
-        
+
         return TrainResponse(
             job_id=job.job_id,
             word=word,
@@ -328,11 +335,11 @@ async def list_jobs(
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid status. Must be one of: {[s.value for s in JobStatus]}"
+                detail=f"Invalid status. Must be one of: {[s.value for s in JobStatus]}",
             )
-    
+
     jobs = job_manager.list_jobs(status=status_filter, limit=limit)
-    
+
     return [
         JobStatusResponse(
             job_id=j.job_id,
@@ -341,7 +348,9 @@ async def list_jobs(
             progress=j.progress,
             current_stage=j.current_stage,
             error_message=j.error_message,
-            estimated_completion=j.estimated_completion.isoformat() if j.estimated_completion else None,
+            estimated_completion=(
+                j.estimated_completion.isoformat() if j.estimated_completion else None
+            ),
             model_path=j.model_path,
             metrics=j.metrics,
             created_at=j.created_at.isoformat(),
@@ -355,10 +364,10 @@ async def list_jobs(
 async def get_job(job_id: str):
     """Get status of a specific training job."""
     job = job_manager.get_job(job_id)
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     return JobStatusResponse(
         job_id=job.job_id,
         word=job.word,
@@ -366,7 +375,9 @@ async def get_job(job_id: str):
         progress=job.progress,
         current_stage=job.current_stage,
         error_message=job.error_message,
-        estimated_completion=job.estimated_completion.isoformat() if job.estimated_completion else None,
+        estimated_completion=(
+            job.estimated_completion.isoformat() if job.estimated_completion else None
+        ),
         model_path=job.model_path,
         metrics=job.metrics,
         created_at=job.created_at.isoformat(),
@@ -378,13 +389,12 @@ async def get_job(job_id: str):
 async def cancel_job(job_id: str):
     """Cancel a running training job."""
     success = await job_manager.cancel_job(job_id)
-    
+
     if not success:
         raise HTTPException(
-            status_code=400,
-            detail="Could not cancel job (may already be completed or cancelled)"
+            status_code=400, detail="Could not cancel job (may already be completed or cancelled)"
         )
-    
+
     return {"message": "Job cancelled successfully"}
 
 
@@ -392,33 +402,35 @@ async def cancel_job(job_id: str):
 # Inference
 # ----------------------------------------------------------------------------
 
+
 @app.post("/predict/{word}", response_model=PredictResponse)
 async def predict(word: str, request: PredictRequest):
     """
     Predict if audio contains the wake word.
-    
+
     Requires a trained model for the word.
     """
     import base64
-    
+
     model_dir = job_manager.get_model_for_word(word)
-    
+
     if not model_dir:
         raise HTTPException(
             status_code=404,
-            detail=f"No model found for word '{word}'. Train one first with POST /train"
+            detail=f"No model found for word '{word}'. Train one first with POST /train",
         )
-    
+
     try:
         # Decode audio
         audio_bytes = base64.b64decode(request.audio_base64)
-        
+
         # Load model and predict
         from .model import WakeWordTrainer
+
         trainer = WakeWordTrainer.load(model_dir)
-        
+
         detected, confidence = trainer.predict(audio_bytes)
-        
+
         return PredictResponse(
             detected=detected,
             confidence=confidence,
@@ -433,10 +445,11 @@ async def predict(word: str, request: PredictRequest):
 # Main entry point
 # ----------------------------------------------------------------------------
 
+
 def main():
     """Run the server."""
     import uvicorn
-    
+
     uvicorn.run(
         "wakeword.app:app",
         host=settings.host,
